@@ -2,46 +2,60 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as opt
+from statsmodels.tsa.ar_model import AutoReg, ar_select_order
+from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.tsa.api import acf, pacf, graphics
 
 def main():
     covid = grasp_data(
         './data/csse_covid_19_data/csse_covid_19_time_series/' +
         'time_series_19-covid-')
-
     #plot_dashboard(covid)
-    covid['time'] = covid.index - covid.index[0]
-    covid['time'] = covid['time'].dt.days
 
-    fit_glb = opt.curve_fit(logistic_model,
-        covid['time'].values.astype(np.float),
-        covid['recovered_glb'].values.astype(np.float) / 7.74247069e+4)
+    #fit_glb = my_fit(covid, 'time', 'recovered_glb', 0.8, True)
 
-    print(fit_glb)
+    #print(fit_glb)
 
-    covid_ita = covid[covid['recovered_ita']>0]
-    xx = covid_ita['time'].values.astype(np.float)
-    xx = xx - xx[0]
-    yy = covid_ita['recovered_ita'].values.astype(np.float) / 771.54859429
-    fit_ita = opt.curve_fit(logistic_model, xx, yy)
+    #fit_ita = my_fit(covid, 'time', 'recovered_ita', 0.8, True)
 
-    print(fit_ita)
+    #print(fit_ita)
 
-    axes = plt.gca()
-    plt.plot(covid['time'].values,
-        covid['recovered_glb'].values.astype(np.float) / 7.74247069e+4, '.r')
-    plt.plot(covid['time'].values, logistic_model(covid['time'].values,
-        fit_glb[0][0], fit_glb[0][1], fit_glb[0][2]))
-
-    plt.figure()
-    axes = plt.gca()
-    plt.plot(xx, yy, '.r')
-    plt.plot(xx, logistic_model(xx,
-        fit_ita[0][0], fit_ita[0][1], fit_ita[0][2]))
+    mod = ARIMA(covid['confirmed_glb'].asfreq('D'), order=[2,2,0])
+    res = mod.fit()
+    print(res.summary())
+    res.plot_predict()
 
     plt.show()
 
+def my_fit(data, xx_name, yy_name, cross, plt_flag):
+
+    tmp_data = data[data[yy_name]>0]
+    yy_points = tmp_data[yy_name].values.astype(np.float)
+    xx_points = tmp_data[xx_name].values.astype(np.float)
+    xx_points = xx_points - xx_points[0]
+
+    max_idx = np.ceil(cross * len(xx_points)).astype(np.int)
+    print(max_idx)
+
+    fit = opt.curve_fit(logistic_model, xx_points[:max_idx],
+        yy_points[:max_idx])
+
+    if (plt_flag):
+        plt.figure()
+        axes = plt.gca()
+        plt.plot(xx_points, yy_points, '.r')
+        plt.plot(xx_points, logistic_model(xx_points, fit[0][0], fit[0][1],
+            fit[0][2]))
+
+    return fit
+
+
 def logistic_model(x, a, b, c):
     return c / (1 + np.exp(-(x-b)/a))
+
+def gen_logistic_model(x, a, b, c, d):
+    c * (1 + np.exp(-(x-b)/a))**(-d)
+
 
 def plot_dashboard(covid):
     covid['r_by_c_glb'] = covid['recovered_glb'] / covid['confirmed_glb']
@@ -132,6 +146,9 @@ def grasp_data(path):
 
     recovered_glb = recovered.iloc[:,3:].transpose().sum(axis=1)
     my_pd['recovered_glb'] = recovered_glb.values
+
+    my_pd['time'] = my_pd.index - my_pd.index[0]
+    my_pd['time'] = my_pd['time'].dt.days
 
     return my_pd
 

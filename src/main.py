@@ -7,7 +7,7 @@ def main():
         './data/csse_covid_19_data/csse_covid_19_time_series/' +
         'time_series_19-covid-')
     t = range(len(d))
-    print(d.loc[d>0,1])
+    print(d.columns[1])
     #np.polyfit(t, np.log(d.loc[]), 1, w=numpy.sqrt(y))
     d.plot(style=".", color="red")
     d.plot(color="blue")

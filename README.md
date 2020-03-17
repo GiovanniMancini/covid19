@@ -1,2 +1,2 @@
 # covid19
-data analisys covid19
+data analysis covid19

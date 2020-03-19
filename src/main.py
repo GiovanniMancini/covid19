@@ -12,18 +12,18 @@ def main():
         'time_series_19-covid-')
     #plot_dashboard(covid)
 
-    #fit_glb = my_fit(covid, 'time', 'recovered_glb', 0.8, True)
+    fit_glb = my_fit(covid, 'time', 'recovered_glb', 0.8, True)
 
-    #print(fit_glb)
+    print(fit_glb)
 
-    #fit_ita = my_fit(covid, 'time', 'recovered_ita', 0.8, True)
+    fit_ita = my_fit(covid, 'time', 'recovered_ita', 0.8, True)
 
-    #print(fit_ita)
+    print(fit_ita)
 
-    mod = ARIMA(covid['confirmed_glb'].asfreq('D'), order=[2,2,0])
-    res = mod.fit()
-    print(res.summary())
-    res.plot_predict()
+    #mod = ARIMA(covid['confirmed_glb'].asfreq('D'), order=[2,2,0])
+    #res = mod.fit()
+    #print(res.summary())
+    #res.plot_predict()
 
     plt.show()
 

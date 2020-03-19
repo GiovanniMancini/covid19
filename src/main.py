@@ -2,9 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as opt
-from statsmodels.tsa.ar_model import AutoReg, ar_select_order
-from statsmodels.tsa.arima_model import ARIMA
-from statsmodels.tsa.api import acf, pacf, graphics
 
 def main():
     covid = grasp_data(
@@ -12,46 +9,136 @@ def main():
         'time_series_19-covid-')
     #plot_dashboard(covid)
 
-    fit_glb = my_fit(covid, 'time', 'recovered_glb', 0.8, True)
+    #fit_glb = my_fit(covid, 'time', 'confirmed_glb', 0.9, [10,1000,300000],
+    ##    True)
 
-    print(fit_glb)
+    #print(fit_glb)
 
-    fit_ita = my_fit(covid, 'time', 'recovered_ita', 0.8, True)
+    fit_ita_c = logistic_fit(covid, 'time', 'confirmed_ita', 0.9, [1,10,100000],
+        True)
 
-    print(fit_ita)
+    print(fit_ita_c)
 
-    #mod = ARIMA(covid['confirmed_glb'].asfreq('D'), order=[2,2,0])
-    #res = mod.fit()
-    #print(res.summary())
-    #res.plot_predict()
+    fit_ita_r = logistic_fit_2(covid, 'time', 'resolved_ita', 0.9, [5,50],
+        True)
+
+    print(fit_ita_r)
+
+    fit_ita_p = pulse_fit(covid, 'time', 'resolved_perc', 1, [4.85,32,4.6,20],
+        ([4.8,31,4.4,19], [4.9,34,4.6,21]), True)
+
+    print(fit_ita_p)
+
+    plt.figure()
+    tmp_data = covid[covid['resolved_perc']>0]
+    yy_points = tmp_data['resolved_perc'].values.astype(np.float)
+    xx_points = tmp_data['time'].values.astype(np.float)
+    xx_points = xx_points - xx_points[0]
+    time = np.arange(3 * np.max(xx_points))
+    plt.plot(xx_points, yy_points, '.r')
+    plt.plot(time, pulse_model(time, fit_ita_c[0][0], fit_ita_c[0][1],
+        fit_ita_r[0][0], fit_ita_r[0][1]))
 
     plt.show()
 
-def my_fit(data, xx_name, yy_name, cross, plt_flag):
+#1.06354377e+05
+
+def pulse_fit(data, xx_name, yy_name, cross, p0, bounds, plt_flag):
+    tmp_data = data[data[yy_name]>0]
+    yy_points = tmp_data[yy_name].values.astype(np.float)
+    xx_points = tmp_data[xx_name].values.astype(np.float)
+    xx_points = xx_points - xx_points[0]
+
+    time = np.arange(3 * np.max(xx_points))
+
+    max_idx = np.ceil(cross * len(xx_points)).astype(np.int)
+    print(max_idx)
+
+    fit = opt.curve_fit(pulse_model, xx_points[:max_idx],
+        yy_points[:max_idx], p0=p0, bounds=bounds)
+
+    if (plt_flag):
+        plt.figure()
+        axes = plt.gca()
+        plt.subplot(2,1,1)
+        plt.plot(xx_points, yy_points, '.r')
+        plt.plot(xx_points[:max_idx], yy_points[:max_idx], 'oy')
+        plt.plot(time, pulse_model(time, fit[0][0], fit[0][1],
+            fit[0][2], fit[0][3]))
+        plt.subplot(2,1,2)
+        plt.plot(time[1:], np.diff(pulse_model(time, fit[0][0], fit[0][1],
+            fit[0][2], fit[0][3])))
+        plt.plot(xx_points[1:],np.diff(yy_points), '.r')
+
+    return fit
+
+def logistic_fit_2(data, xx_name, yy_name, cross, p0, plt_flag):
 
     tmp_data = data[data[yy_name]>0]
     yy_points = tmp_data[yy_name].values.astype(np.float)
     xx_points = tmp_data[xx_name].values.astype(np.float)
     xx_points = xx_points - xx_points[0]
 
+    time = np.arange(3 * np.max(xx_points))
+
     max_idx = np.ceil(cross * len(xx_points)).astype(np.int)
     print(max_idx)
 
-    fit = opt.curve_fit(logistic_model, xx_points[:max_idx],
-        yy_points[:max_idx])
+    fit = opt.curve_fit(logistic_model_2, xx_points[:max_idx],
+        yy_points[:max_idx], p0=p0)
 
     if (plt_flag):
         plt.figure()
         axes = plt.gca()
+        plt.subplot(2,1,1)
         plt.plot(xx_points, yy_points, '.r')
-        plt.plot(xx_points, logistic_model(xx_points, fit[0][0], fit[0][1],
-            fit[0][2]))
+        plt.plot(xx_points[:max_idx], yy_points[:max_idx], 'oy')
+        plt.plot(time, logistic_model_2(time, fit[0][0], fit[0][1]))
+        plt.subplot(2,1,2)
+        plt.plot(time[1:], np.diff(logistic_model_2(time, fit[0][0], fit[0][1])))
+        plt.plot(xx_points[1:],np.diff(yy_points), '.r')
 
     return fit
 
 
+def logistic_fit(data, xx_name, yy_name, cross, p0, plt_flag):
+
+    tmp_data = data[data[yy_name]>0]
+    yy_points = tmp_data[yy_name].values.astype(np.float)
+    xx_points = tmp_data[xx_name].values.astype(np.float)
+    xx_points = xx_points - xx_points[0]
+
+    time = np.arange(3 * np.max(xx_points))
+
+    max_idx = np.ceil(cross * len(xx_points)).astype(np.int)
+    print(max_idx)
+
+    fit = opt.curve_fit(logistic_model, xx_points[:max_idx],
+        yy_points[:max_idx], p0=p0)
+
+    if (plt_flag):
+        plt.figure()
+        axes = plt.gca()
+        plt.subplot(2,1,1)
+        plt.plot(xx_points, yy_points, '.r')
+        plt.plot(xx_points[:max_idx], yy_points[:max_idx], 'oy')
+        plt.plot(time, logistic_model(time, fit[0][0], fit[0][1],
+            fit[0][2]))
+        plt.subplot(2,1,2)
+        plt.plot(time[1:], np.diff(logistic_model(time, fit[0][0], fit[0][1],
+            fit[0][2])))
+        plt.plot(xx_points[1:],np.diff(yy_points), '.r')
+
+    return fit
+
+def logistic_model_2(x, a, b):
+    return 1.06354377e+05 / (1 + np.exp(-(x-b)/a))
+
 def logistic_model(x, a, b, c):
     return c / (1 + np.exp(-(x-b)/a))
+
+def pulse_model(x, a, b, c, d):
+    return (1 + np.exp(-(x-d)/c)) / (1 + np.exp(-(x-b)/a))
 
 def gen_logistic_model(x, a, b, c, d):
     c * (1 + np.exp(-(x-b)/a))**(-d)
@@ -138,6 +225,9 @@ def grasp_data(path):
     recovered_ita = recovered.loc['Italy'].iloc[3:].transpose()
     my_pd['recovered_ita'] = recovered_ita.values
 
+    my_pd['resolved_ita'] = recovered_ita.values + deaths_ita.values
+    my_pd['resolved_perc'] = my_pd['resolved_ita']/my_pd['confirmed_ita']
+
     deaths_glb = deaths.iloc[:,3:].transpose().sum(axis=1)
     my_pd['deaths_glb'] = deaths_glb.values
 
@@ -146,6 +236,7 @@ def grasp_data(path):
 
     recovered_glb = recovered.iloc[:,3:].transpose().sum(axis=1)
     my_pd['recovered_glb'] = recovered_glb.values
+
 
     my_pd['time'] = my_pd.index - my_pd.index[0]
     my_pd['time'] = my_pd['time'].dt.days

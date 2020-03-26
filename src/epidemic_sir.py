@@ -14,11 +14,12 @@ START_DATE = {
 
 class Epidemic_SIR(object):
 
-    def __init__(self, data, params):
+    def __init__(self, data=None, params=None):
         self.data = data
-        self.timespan = [min time, max time]
-        self.iv = [] #set to measured data
-        self.params = params
+        print(self.data)
+        #self.timespan = [min time, max time]
+        #self.iv = [] #set to measured data
+        #self.params = params
 
 
     #def load_confirmed(self, country):
@@ -53,64 +54,64 @@ class Epidemic_SIR(object):
         return [dS, dI, dR]
 
     def observales(y):
-        z = f(y)
-        return z
+        #z = f(y)
+        #return z
+        return 0
 
     def loss(point, data):
-        """
-        L2 loss between mesured data and predicted data
-        """
+        # l2 loss
 
         # model canot be used directly, I should use a lambda f
         # solve initial value problem
-        solution = solve_ivp(self.model, self.timespan, self.iv,
-            t_eval=self.data['time'], vectorized=True)
+        #solution = solve_ivp(self.model, self.timespan, self.iv,
+        #    t_eval=self.data['time'], vectorized=True)
 
         # compute l2 loss
         # TODO: use libary function to compute l2
-        l2_loss = (self.observables(solution.y) - data) ** 2
+        #l2_loss = (self.observables(solution.y) - data) ** 2
 
-        return l2_loss
+        #return l2_loss
+        return 0
 
     def predict(self, n_range):
 
-        seld.data
-        def SIR(t, y):
-            S = y[0]
-            I = y[1]
-            R = y[2]
-            return [-beta*S*I, beta*S*I-gamma*I, gamma*I]
-        extended_actual = np.concatenate((data.values, [None] * (size - len(data.values))))
-        return new_index, extended_actual, solve_ivp(SIR, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1))
+        #seld.data
+        #def SIR(t, y):
+        #    S = y[0]
+        #    I = y[1]
+        #    R = y[2]
+        #    return [-beta*S*I, beta*S*I-gamma*I, gamma*I]
+        #extended_actual = np.concatenate((data.values, [None] * (size - len(data.values))))
+        #return new_index, extended_actual, solve_ivp(SIR, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1))
+        return 0
 
     def view ():
-        new_index, extended_actual, prediction = self.predict(beta, gamma, data)
-        df = pd.DataFrame({
-            'Actual': extended_actual,
-            'S': prediction.y[0],
-            'I': prediction.y[1],
-            'R': prediction.y[2]
-        }, index=new_index)
-        fig, ax = plt.subplots(figsize=(15, 10))
-        ax.set_title(self.country)
-        df.plot(ax=ax)
-        fig.savefig(f"{self.country}.png")
+        #new_index, extended_actual, prediction = self.predict(beta, gamma, data)
+        #df = pd.DataFrame({
+    #        'Actual': extended_actual,
+        #    'S': prediction.y[0],
+        #    'I': prediction.y[1],
+        #    'R': prediction.y[2]
+        #}, index=new_index)
+        #fig, ax = plt.subplots(figsize=(15, 10))
+        #ax.set_title(self.country)
+        #df.plot(ax=ax)
+        #fig.savefig(f"{self.country}.png")
 
         return 0
 
     def estimate(self):
-        """
-        Run the optimization to estimate the beta and gamma fitting the given confirmed cases.
-        """
-        data = self.load_confirmed(self.country)
-        optimal = minimize(
-            loss,
-            [0.001, 0.001],
-            args=(data),
-            method='L-BFGS-B',
-            bounds=[(0.00000001, 0.4), (0.00000001, 0.4)]
-        )
-        beta, gamma = optimal.x
+
+        #data = self.load_confirmed(self.country)
+        #optimal = minimize(
+        #    loss,
+        #    [0.001, 0.001],
+        #    args=(data),
+        #    method='L-BFGS-B',
+        #    bounds=[(0.00000001, 0.4), (0.00000001, 0.4)]
+        #)
+        #beta, gamma = optimal.x
+        return 0
 
     def data():
         return 0

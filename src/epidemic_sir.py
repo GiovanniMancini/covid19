@@ -11,7 +11,6 @@ class Epidemic_SIR(object):
 
     def __init__(self, data=None, params=None, start_pop=200000):
         self.data = data.get_data()
-        print(self.data)
         self.pred = pd.DataFrame()
         self.y_meas = data.time_series()
         self.N = start_pop
@@ -23,6 +22,8 @@ class Epidemic_SIR(object):
         self.mdl = self.model()
         self.loss = self.loss()
         self.params = params
+
+        self.rms = 0.
 
     def model(self):
         # Vectorial ODE
@@ -94,7 +95,10 @@ class Epidemic_SIR(object):
             color=['red', 'magenta'], ax=axes)
         self.pred.plot(kind="line", y=['infectious', 'resolved'],
             color=['yellow', 'blue'], ax=axes)
-        plt.title('Cumulated Cases')
+        plt.title('Cumulated Cases. rms=' + str(self.rms) +
+            ". Max=" + str(self.pred.index[self.pred['infectious'].argmax()]))
+        #x=[]
+        #self.pred.plot.bar( style='o', color='k', y=['infectious'])
 
         plt.figure()
         axes = plt.gca()
@@ -106,12 +110,15 @@ class Epidemic_SIR(object):
 
         plt.figure()
         axes = plt.gca()
-        self.data['p'] = self.data['resolved'] / self.data['confirmed']
-        self.pred['p'] = self.pred['resolved'] / self.pred['infectious']
+        self.data['p'] = self.data['resolved'] / (self.data['confirmed'] +
+            self.data['resolved'])
+        self.pred['p'] = self.pred['resolved'] / (self.pred['infectious'] +
+            self.pred['resolved'])
         self.data.plot(style=".", y=['p'],
             color="red", ax=axes)
         self.pred.plot(kind="line", y=['p'],
             color="yellow", ax=axes)
+        plt.title('Resolved Probability')
 
         plt.show()
 
@@ -126,4 +133,6 @@ class Epidemic_SIR(object):
             options={'gtol': 1e-9, 'disp': True}
         )
         self.params = optimal.x
+        self.rms = np.sqrt(optimal.fun)
         print(self.params)
+        print(self.rms)

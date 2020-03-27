@@ -16,7 +16,7 @@ def main():
     covid.grasp(type='all', country='Italy', rm_geo=True, rm_zero=True,
         transpose=True)
 
-    sir = Epidemic_SIR(covid)
+    sir = Epidemic_SIR(covid, start_pop=250000)
     sir.estimate()
     sir.predict(150)
     sir.view()

@@ -5,113 +5,125 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
 
-START_DATE = {
-  'Japan': '1/22/20',
-  'Italy': '1/31/20',
-  'Republic of Korea': '1/22/20',
-  'Iran (Islamic Republic of)': '2/19/20'
-}
+
 
 class Epidemic_SIR(object):
 
-    def __init__(self, data=None, params=None):
-        self.data = data
+    def __init__(self, data=None, params=None, start_pop=200000):
+        self.data = data.get_data()
         print(self.data)
-        #self.timespan = [min time, max time]
-        #self.iv = [] #set to measured data
-        #self.params = params
+        self.pred = pd.DataFrame()
+        self.y_meas = data.time_series()
+        self.N = start_pop
+        self.timespan = data.timespan()
+        self.iv = data.initial_value()
+        self.iv = np.hstack([self.N-np.sum(self.iv), self.iv])
+        self.time = data.time()
 
+        self.mdl = self.model()
+        self.loss = self.loss()
+        self.params = params
 
-    #def load_confirmed(self, country):
-    #  """
-    #  Load confirmed cases downloaded from HDX
-    #  """
-    #  df = pd.read_csv('data/time_series_19-covid-Confirmed.csv')
-    #  country_df = df[df['Country/Region'] == country]
-    #  return country_df.iloc[0].loc[START_DATE[country]:]
-
-    #def extend_index(self, index, new_size):
-    #    values = index.values
-    #    current = datetime.strptime(index[-1], '%m/%d/%y')
-    #    while len(values) < new_size:
-    #        current = current + timedelta(days=1)
-    #        values = np.append(values, datetime.strftime(current, '%m/%d/%y'))
-    #    return values
-
-    def model(t, y):
+    def model(self):
         # Vectorial ODE
+        def sir_mdl(theta, t, y, N) :
 
-        #  Unmarshall state
-        S = y[0]
-        I = y[1]
-        R = y[2]
+            #  Unmarshall state
+            (S, I, R) = y
 
-        # Compute derivatives
-        dS = -beta * S * I
-        dI = beta * S * I - gamma * I
-        dR = gamma * I
+            # Unmarshall parameters
+            (l, mu, b, g)  = theta
 
-        return [dS, dI, dR]
+            # Compute derivatives
+            dS = l - mu * S - b * I * S / N
+            dI = b * I * S / N - (g + mu) * I
+            dR = g * I - mu * R
 
-    def observales(y):
-        #z = f(y)
-        #return z
-        return 0
+            return [dS, dI, dR]
 
-    def loss(point, data):
+        mdl = lambda theta, t, y, N : sir_mdl(theta, t, y, N)
+        return mdl
+
+    def observables(self, y):
+        return y[:,1:3]
+
+    def loss(self):
         # l2 loss
 
-        # model canot be used directly, I should use a lambda f
-        # solve initial value problem
-        #solution = solve_ivp(self.model, self.timespan, self.iv,
-        #    t_eval=self.data['time'], vectorized=True)
+        def l2_loss(theta):
 
-        # compute l2 loss
-        # TODO: use libary function to compute l2
-        #l2_loss = (self.observables(solution.y) - data) ** 2
+            x = lambda t, y: self.mdl(theta, t, y, self.N)
 
-        #return l2_loss
-        return 0
+            # model canot be used directly, I should use a lambda f
+            # solve initial value problem
+            solution = solve_ivp(x, self.timespan, self.iv,
+                t_eval=self.time, vectorized=True)
+
+            # compute l2 loss
+            # TODO: use libary function to compute l2
+            l2_loss = np.sum(
+                (self.observables(solution.y.T) - self.y_meas) ** 2)
+
+            return l2_loss
+
+        # useless
+        my_loss = lambda theta: l2_loss(theta)
+
+        return my_loss
 
     def predict(self, n_range):
 
-        #seld.data
-        #def SIR(t, y):
-        #    S = y[0]
-        #    I = y[1]
-        #    R = y[2]
-        #    return [-beta*S*I, beta*S*I-gamma*I, gamma*I]
-        #extended_actual = np.concatenate((data.values, [None] * (size - len(data.values))))
-        #return new_index, extended_actual, solve_ivp(SIR, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1))
-        return 0
+        self.pred['time'] = np.arange(n_range).astype(np.int)
 
-    def view ():
-        #new_index, extended_actual, prediction = self.predict(beta, gamma, data)
-        #df = pd.DataFrame({
-    #        'Actual': extended_actual,
-        #    'S': prediction.y[0],
-        #    'I': prediction.y[1],
-        #    'R': prediction.y[2]
-        #}, index=new_index)
-        #fig, ax = plt.subplots(figsize=(15, 10))
-        #ax.set_title(self.country)
-        #df.plot(ax=ax)
-        #fig.savefig(f"{self.country}.png")
+        self.pred.set_index(self.data.index[0] +
+            self.data.index.freq * self.pred['time'], inplace=True)
 
-        return 0
+        mdl = lambda t, y: self.mdl(self.params, t, y, self.N)
+        prediction = solve_ivp(mdl, [0, n_range], self.iv,
+            t_eval=self.pred['time'].values, vectorized=True)
+        self.pred['susceptible'] = prediction.y[0]
+        self.pred['infectious'] = prediction.y[1]
+        self.pred['resolved'] = prediction.y[2]
+
+        print(self.pred)
+
+    def view (self):
+        plt.figure()
+        axes = plt.gca()
+        self.data.plot(style=".", y=['confirmed', 'resolved'],
+            color=['red', 'magenta'], ax=axes)
+        self.pred.plot(kind="line", y=['infectious', 'resolved'],
+            color=['yellow', 'blue'], ax=axes)
+        plt.title('Cumulated Cases')
+
+        plt.figure()
+        axes = plt.gca()
+        self.data.diff().plot(style=".", y=['confirmed', 'resolved'],
+            color=['red', 'magenta'], ax=axes)
+        self.pred.diff().plot(kind="line", y=['infectious', 'resolved'],
+            color=['yellow', 'blue'], ax=axes)
+        plt.title('Daily Increments')
+
+        plt.figure()
+        axes = plt.gca()
+        self.data['p'] = self.data['resolved'] / self.data['confirmed']
+        self.pred['p'] = self.pred['resolved'] / self.pred['infectious']
+        self.data.plot(style=".", y=['p'],
+            color="red", ax=axes)
+        self.pred.plot(kind="line", y=['p'],
+            color="yellow", ax=axes)
+
+        plt.show()
 
     def estimate(self):
 
-        #data = self.load_confirmed(self.country)
-        #optimal = minimize(
-        #    loss,
-        #    [0.001, 0.001],
-        #    args=(data),
-        #    method='L-BFGS-B',
-        #    bounds=[(0.00000001, 0.4), (0.00000001, 0.4)]
-        #)
-        #beta, gamma = optimal.x
-        return 0
-
-    def data():
-        return 0
+        optimal = minimize(
+            self.loss,
+            [0.001, 1, 0.001, 0.001],
+            method='L-BFGS-B',
+            bounds=[(1e-8, 5e-1), (1e-8, 2e-1), (1e-8, 5e-1),
+            (1e-8, 5e-1)],
+            options={'gtol': 1e-9, 'disp': True}
+        )
+        self.params = optimal.x
+        print(self.params)

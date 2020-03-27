@@ -9,15 +9,17 @@ from epidemic_sir import Epidemic_SIR
 def main():
 
     path = ( './COVID-19/csse_covid_19_data/csse_covid_19_time_series/'
-         + 'time_series_19-covid-' )
+         + 'time_series_covid19_' )
 
-    covid = Epidemic_data(path)
+    covid = Epidemic_data(path, format='resolved')
 
     covid.grasp(type='all', country='Italy', rm_geo=True, rm_zero=True,
         transpose=True)
-    data_ita = covid.get_data()
 
-    sir = Epidemic_SIR(data_ita)
+    sir = Epidemic_SIR(covid)
+    sir.estimate()
+    sir.predict(150)
+    sir.view()
 
 if (__name__ == "__main__"):
     main()

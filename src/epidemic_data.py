@@ -3,14 +3,14 @@ import numpy as np
 
 class Epidemic_data(object):
 
-    def __init__(self, path):
+    def __init__(self, path, format):
 
         # read raw
-        confirmed = pd.read_csv(path + 'Confirmed.csv')
+        confirmed = pd.read_csv(path + 'confirmed_global.csv')
         confirmed['Type'] = 'confirmed'
-        deaths = pd.read_csv(path + 'Deaths.csv')
+        deaths = pd.read_csv(path + 'deaths_global.csv')
         deaths['Type'] = 'deaths'
-        recovered = pd.read_csv(path + 'Recovered.csv')
+        recovered = pd.read_csv(path + 'recovered_global.csv')
         recovered['Type'] = 'recovered'
 
         #deaths.set_index('Country/Region', inplace=True)
@@ -23,11 +23,13 @@ class Epidemic_data(object):
 
         self.out = pd.DataFrame()
 
+        self.format = format
+
     def get_data(self):
         return self.out
 
     def grasp(self, type='all', country='Italy', rm_geo=True, rm_zero=True,
-        transpose=True):
+        transpose=True, format='resolved'):
 
         # select only country of interest
         self.out = self.data[self.data['Country/Region'] == country]
@@ -60,8 +62,26 @@ class Epidemic_data(object):
             self.out['time'] = self.out.index - self.out.index[0]
             self.out['time'] = self.out['time'].dt.days
 
-        print(self.out)
+        if (self.format == 'resolved'):
+            self.out['resolved'] = self.out['deaths'] + self.out['recovered']
+            self.out = self.out.drop('deaths', axis=1)
+            self.out = self.out.drop('recovered', axis=1)
 
+        self.out = self.out.dropna()
+
+    def timespan(self):
+        return [np.min(self.out['time']), np.max(self.out['time'])]
+
+    def initial_value(self):
+        tmp = self.out[self.out['time'] == 0]
+        tmp = tmp.drop('time', axis=1)
+        return tmp.values[0]
+
+    def time(self):
+        return self.out['time'].values
+
+    def time_series(self):
+        return self.out.drop('time', axis=1).values
         #confirmed_glb = confirmed.iloc[:,3:].transpose().sum(axis=1)
         #my_pd['confirmed_glb'] = confirmed_glb.values
 
@@ -70,3 +90,10 @@ class Epidemic_data(object):
 
         #my_pd['time'] = my_pd.index - my_pd.index[0]
         #my_pd['time'] = my_pd['time'].dt.days
+#def extend_index(self, index, new_size):
+#    values = index.values
+#    current = datetime.strptime(index[-1], '%m/%d/%y')
+#    while len(values) < new_size:
+#        current = current + timedelta(days=1)
+#        values = np.append(values, datetime.strftime(current, '%m/%d/%y'))
+#    return values
